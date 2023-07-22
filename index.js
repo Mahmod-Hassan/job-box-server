@@ -26,12 +26,31 @@ async function run() {
       // Connect the client to the server
       await client.connect();
       const userCollection = client.db('jobBox').collection('users');
+      const jobCollection = client.db('jobBox').collection('jobs');
      
-      app.get('/users', async (req, res) => {
-          const result = await userCollection.find({}).toArray();
+      app.post('/user', async (req, res) => {
+          const user = req.body;
+          const result = await userCollection.insertOne(user);
           res.send(result);
       })
-    } finally {
+      app.get('/user/:email', async (req, res) => {
+        const email = req.params.email;
+        const result = await userCollection.findOne({email:email});
+        if(result?.email){
+          return res.send({status: true, data: result})
+        }else{
+         return res.send({email: email})
+        }
+      })
+      app.post('/job', async (req, res) => {
+        const job = req.body;
+        console.log(job);
+        const result = await jobCollection.insertOne(job);
+        res.send(result);
+      })
+    } 
+    
+    finally {
     //   await client.close();
     }
   }
