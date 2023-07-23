@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const app = express();
 const dotenv = require('dotenv');
@@ -42,10 +42,72 @@ async function run() {
          return res.send({email: email})
         }
       })
+
       app.post('/job', async (req, res) => {
         const job = req.body;
-        console.log(job);
         const result = await jobCollection.insertOne(job);
+        res.send(result);
+      })
+
+      app.get('/jobs', async (req, res) => {
+        const result = await jobCollection.find({}).toArray();
+        res.send(result);
+      })
+
+      app.get('/job/:id', async (req, res) => {
+        const id = req.params.id;
+        const result = await jobCollection.findOne({_id: new ObjectId(id)});
+        res.send(result);
+      })
+
+
+      app.patch('/apply', async (req,res) => {
+        const userId = req.body.userId;
+        const jobId = req.body.jobId;
+        const email = req.body.email;
+
+        const filter = {_id: new ObjectId(jobId)};
+        const updateDoc = {
+          $push: {applicants: {id: new ObjectId(userId), email}},
+        };
+        const result = await jobCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      })
+
+      app.patch('/question', async (req,res) => {
+        const userId = req.body.userId;
+        const jobId = req.body.jobId;
+        const email = req.body.email;
+        const question = req.body.question;
+        const filter = {_id: new ObjectId(jobId)};
+        const updateDoc = {
+          $push: {queries: {id: new ObjectId(userId), email, question}},
+        };
+        const result = await jobCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      })
+
+      app.patch('/reply', async (req,res) => {
+        const userId = req.body.userId;
+        const reply = req.body.reply;
+
+        const filter = {"queries.id" : new ObjectId(userId)};
+        const updateDoc = {
+          $push: {
+            "queries.$[user].reply": reply,
+          }
+        }
+        const arrayFilter = {
+          arrayFilters: [{"user.id": new ObjectId(userId)}]
+        };
+        const result = await jobCollection.updateOne(filter, updateDoc, arrayFilter);
+        res.send(result);
+      })
+
+      app.get('/applied-jobs/:email', async (req, res) => {
+        const email = req.params.email;
+        const query = {applicants : {$elemMatch: {email: email}}};
+        const result = await jobCollection.find(query).project({applicants: 0}).toArray();
         res.send(result);
       })
     } 
